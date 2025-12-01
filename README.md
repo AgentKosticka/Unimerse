@@ -142,16 +142,16 @@ This section summarizes exact specs implemented in the code.
 ### Packet format (accurate to `Packets.cs`)
 
 - Base `Packet` serialized as: `[int lengthOfJsonPlus1][byte id][json bytes]`
-- Known packet IDs:
+- Background packet IDs (reserved for keeping app working):
+  - `PublicKeysExchangePacket` → `0xf0`
+  - `AuthPacket` → `0xf1`
+  - `ClientJoinedPacket` → `0xf2`
+  - `ClientLeftPacket` → `0xf3`
+  - `ServerStatusPacket` → `0xf4`
   - `StatusPacket` → `0x01`
+- Application packet IDs (now a sample app with basic texting):
   - `ChatPacket` → `0x02`
   - `ChatBrodcastPacket` → `0x03`
-  - `UDPBrodcastPacket` → `0xf0`
-  - `PublicKeysExchangePacket` → `0xf1`
-  - `AuthPacket` → `0xf2`
-  - `ClientJoinedPacket` → `0xe1`
-  - `ClientLeftPacket` → `0xe2`
-  - `ServerStatusPacket` → `0xe3`
 
 Status codes (as remarked in source): `10=OK`, `11=Executed`, `20=Rejected`, `21=Invalid token`, `22=Invalid command`, `23=Invalid data`, `30=Error`.
 

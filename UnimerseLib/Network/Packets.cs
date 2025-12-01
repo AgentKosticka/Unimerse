@@ -9,27 +9,16 @@ using System.Threading.Tasks;
 
 namespace UnimerseLib.Network
 {
-
-    /// <summary>
-    /// Base type for all packets exchanged between clients and the server.
-    /// </summary>
     public abstract class Packet
     {
         public abstract byte ID { get; }
         public long Timestamp { get; set; }
-
-        /// <summary>
-        /// Returns a formatted representation including the packet identifier.
-        /// </summary>
         public override string ToString() => $"{GetType().Name} (ID: {ID:X2})";
         protected Packet()
         {
             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         }
 
-        /// <summary>
-        /// Maps packet identifiers to their concrete types via reflection for deserialization.
-        /// </summary>
         private static readonly Dictionary<byte, Type> packetTypes = Assembly.GetExecutingAssembly()
             .GetTypes()
             .Where(t => t.IsSubclassOf(typeof(Packet)) && !t.IsAbstract)
@@ -38,9 +27,6 @@ namespace UnimerseLib.Network
                 t => t
             );
 
-        /// <summary>
-        /// Serializes the packet to an unencrypted binary payload.
-        /// </summary>
         public byte[] Serialize()
         {
 
@@ -59,9 +45,6 @@ namespace UnimerseLib.Network
             return ms.ToArray();
         }
 
-        /// <summary>
-        /// Deserializes an unencrypted packet from a binary payload.
-        /// </summary>
         public static Packet? Deserialize(byte[] data)
         {
             using var ms = new MemoryStream(data);
@@ -83,43 +66,41 @@ namespace UnimerseLib.Network
         }
     }
 
-    /// <summary>
-    /// Broadcast UDP payload used for local service discovery.
-    /// </summary>
-    public class UDPBrodcastPacket : Packet
-    {
-        [JsonIgnore]
-        public override byte ID => 0xf0;
-        public string ServiceName { get; set; } = string.Empty;
-        public string Ip { get; set; } = string.Empty;
-        public int Port { get; set; }
-    }
-
-    /// <summary>
-    /// Exchanges RSA and ECDH material during the encrypted session handshake.
-    /// </summary>
     public class PublicKeysExchangePacket : Packet
     {
-        public override byte ID => 0xf1;
+        public override byte ID => 0xf0;
         public byte[] RSAPublicKey { get; set; } = [];
         public byte[] ECDHPublicKey { get; set; } = [];
         public byte[] ECDHSignature { get; set; } = [];
     }
 
-    /// <summary>
-    /// Carries the client's authentication token and desired username.
-    /// </summary>
     public class AuthPacket : Packet
     {
         [JsonIgnore]
-        public override byte ID => 0xf2;
+        public override byte ID => 0xf1;
         public string Token { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// Communicates standardized status codes between peers.
-    /// </summary>
+    public class ClientJoinedPacket : Packet
+    {
+        [JsonIgnore]
+        public override byte ID => 0xf2;
+        public string Username { get; set; } = string.Empty;
+    }
+    public class ClientLeftPacket : Packet
+    {
+        [JsonIgnore]
+        public override byte ID => 0xf3;
+        public string Username { get; set; } = string.Empty;
+    }
+    public class ServerStatusPacket : Packet
+    {
+        [JsonIgnore]
+        public override byte ID => 0xf4;
+        public string[] CurrentUsers { get; set; } = [];
+        public string Description { get; set; } = string.Empty;
+    }
     public class StatusPacket : Packet
     {
         [JsonIgnore]
@@ -131,29 +112,6 @@ namespace UnimerseLib.Network
         /// </remarks>
     }
 
-    /// <summary>
-    /// Notifies connected clients when a new participant joins the server.
-    /// </summary>
-    public class ClientJoinedPacket : Packet
-    {
-        [JsonIgnore]
-        public override byte ID => 0xe1;
-        public string Username { get; set; } = string.Empty;
-    }
-
-    /// <summary>
-    /// Alerts connected clients when a participant disconnects.
-    /// </summary>
-    public class ClientLeftPacket : Packet
-    {
-        [JsonIgnore]
-        public override byte ID => 0xe2;
-        public string Username { get; set; } = string.Empty;
-    }
-
-    /// <summary>
-    /// Carries a chat message from a client to the server.
-    /// </summary>
     public class ChatPacket : Packet
     {
         [JsonIgnore]
@@ -161,26 +119,12 @@ namespace UnimerseLib.Network
         public string Message { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// Broadcasts a chat message from the server to all clients.
-    /// </summary>
     public class ChatBrodcastPacket : Packet
     {
         [JsonIgnore]
         public override byte ID => 0x03;
         public string Sender { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
-    }
-
-    /// <summary>
-    /// Provides a snapshot of the server state, including active users and the current description.
-    /// </summary>
-    public class ServerStatusPacket : Packet
-    {
-        [JsonIgnore]
-        public override byte ID => 0xe3;
-        public string[] CurrentUsers { get; set; } = [];
-        public string Description { get; set; } = string.Empty;
     }
 }
 

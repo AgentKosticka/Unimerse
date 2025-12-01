@@ -22,6 +22,7 @@ namespace UnimerseClient
 
         static async Task Main()
         {
+            // Ensure UTF-8 console
             Console.InputEncoding = Encoding.UTF8;
             Console.OutputEncoding = Encoding.UTF8;
 
