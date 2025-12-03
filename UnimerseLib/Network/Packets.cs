@@ -12,6 +12,7 @@ namespace UnimerseLib.Network
     [PacketId(0x00)] // Base ID, should not be used directly.
     public abstract class Packet 
     {
+        [JsonIgnore]
         public byte ID => GetType().GetCustomAttribute<PacketIdAttribute>()?.Id
                     ?? throw new InvalidOperationException($"{GetType().Name} has no PacketIdAttribute");
 
@@ -22,14 +23,34 @@ namespace UnimerseLib.Network
             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         }
 
-        private static readonly Dictionary<byte, Type> packetTypes = AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(assembly => assembly.GetTypes())
+        private static List<Assembly> packetTypeAssemblies = [ Assembly.GetExecutingAssembly() ];
+
+        public static void RegisterPacketTypeAssembly(Assembly assembly)
+        {
+            if (!packetTypeAssemblies.Contains(assembly))
+            {
+                packetTypeAssemblies.Add(assembly);
+                // Rebuild the packetTypes dictionary
+                packetTypes = packetTypeAssemblies
+                    .SelectMany(a => a.GetTypes())
+                    .Where(t => t.IsSubclassOf(typeof(Packet)) && !t.IsAbstract)
+                    .Where(t => t.GetCustomAttribute<PacketIdAttribute>() != null)
+                    .ToDictionary(
+                        t => t.GetCustomAttribute<PacketIdAttribute>()!.Id,
+                        t => t
+                    );
+            }
+        }
+
+        private static Dictionary<byte, Type> packetTypes = Assembly.GetExecutingAssembly()
+            .GetTypes()
             .Where(t => t.IsSubclassOf(typeof(Packet)) && !t.IsAbstract)
             .Where(t => t.GetCustomAttribute<PacketIdAttribute>() != null) // Ensure it has PacketIdAttribute
             .ToDictionary(
                 t => t.GetCustomAttribute<PacketIdAttribute>()!.Id,
                 t => t
             );
+
 
         public byte[] Serialize()
         {
