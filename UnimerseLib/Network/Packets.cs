@@ -12,7 +12,9 @@ namespace UnimerseLib.Network
     [PacketId(0x00)] // Base ID, should not be used directly.
     public abstract class Packet 
     {
-        public byte ID => GetType().GetCustomAttribute<PacketIdAttribute>()!.Id;
+        public byte ID => GetType().GetCustomAttribute<PacketIdAttribute>()?.Id
+                    ?? throw new InvalidOperationException($"{GetType().Name} has no PacketIdAttribute");
+
         public long Timestamp { get; set; }
         public override string ToString() => $"{GetType().Name} (ID: {ID:X2})";
         protected Packet()
@@ -23,6 +25,7 @@ namespace UnimerseLib.Network
         private static readonly Dictionary<byte, Type> packetTypes = AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(assembly => assembly.GetTypes())
             .Where(t => t.IsSubclassOf(typeof(Packet)) && !t.IsAbstract)
+            .Where(t => t.GetCustomAttribute<PacketIdAttribute>() != null) // Ensure it has PacketIdAttribute
             .ToDictionary(
                 t => t.GetCustomAttribute<PacketIdAttribute>()!.Id,
                 t => t
