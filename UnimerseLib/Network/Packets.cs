@@ -9,9 +9,10 @@ using System.Threading.Tasks;
 
 namespace UnimerseLib.Network
 {
-    public abstract class Packet
+    [PacketId(0x00)] // Base ID, should not be used directly.
+    public abstract class Packet 
     {
-        public abstract byte ID { get; }
+        public byte ID => GetType().GetCustomAttribute<PacketIdAttribute>()!.Id;
         public long Timestamp { get; set; }
         public override string ToString() => $"{GetType().Name} (ID: {ID:X2})";
         protected Packet()
@@ -19,11 +20,11 @@ namespace UnimerseLib.Network
             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         }
 
-        private static readonly Dictionary<byte, Type> packetTypes = Assembly.GetExecutingAssembly()
-            .GetTypes()
+        private static readonly Dictionary<byte, Type> packetTypes = AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(assembly => assembly.GetTypes())
             .Where(t => t.IsSubclassOf(typeof(Packet)) && !t.IsAbstract)
             .ToDictionary(
-                t => (byte)((Packet)Activator.CreateInstance(t)!).ID,
+                t => t.GetCustomAttribute<PacketIdAttribute>()!.Id,
                 t => t
             );
 
@@ -66,45 +67,50 @@ namespace UnimerseLib.Network
         }
     }
 
+    [AttributeUsage(AttributeTargets.Class)]
+    public class PacketIdAttribute : Attribute
+    {
+        public byte Id { get; }
+        public PacketIdAttribute(byte id) => Id = id;
+    }
+
+    [PacketId(0xf0)]
     public class PublicKeysExchangePacket : Packet
     {
-        public override byte ID => 0xf0;
         public byte[] RSAPublicKey { get; set; } = [];
         public byte[] ECDHPublicKey { get; set; } = [];
         public byte[] ECDHSignature { get; set; } = [];
     }
 
+    [PacketId(0xf1)]
     public class AuthPacket : Packet
     {
-        [JsonIgnore]
-        public override byte ID => 0xf1;
         public string Token { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
     }
 
+    [PacketId(0xf2)]
     public class ClientJoinedPacket : Packet
     {
-        [JsonIgnore]
-        public override byte ID => 0xf2;
         public string Username { get; set; } = string.Empty;
     }
+
+    [PacketId(0xf3)]
     public class ClientLeftPacket : Packet
     {
-        [JsonIgnore]
-        public override byte ID => 0xf3;
         public string Username { get; set; } = string.Empty;
     }
+
+    [PacketId(0xf4)]
     public class ServerStatusPacket : Packet
     {
-        [JsonIgnore]
-        public override byte ID => 0xf4;
         public string[] CurrentUsers { get; set; } = [];
         public string Description { get; set; } = string.Empty;
     }
+
+    [PacketId(0xff)]
     public class StatusPacket : Packet
     {
-        [JsonIgnore]
-        public override byte ID => 0x01;
         public byte Code { get; set; }
         /// <remarks>
         /// 10 = OK, 11 = Executed, 20 = Rejected by receiver, 21 = Invalid token, 22 = Invalid command,
@@ -112,17 +118,15 @@ namespace UnimerseLib.Network
         /// </remarks>
     }
 
+    [PacketId(0x01)]
     public class ChatPacket : Packet
     {
-        [JsonIgnore]
-        public override byte ID => 0x02;
         public string Message { get; set; } = string.Empty;
     }
 
+    [PacketId(0x02)]
     public class ChatBrodcastPacket : Packet
     {
-        [JsonIgnore]
-        public override byte ID => 0x03;
         public string Sender { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
     }
